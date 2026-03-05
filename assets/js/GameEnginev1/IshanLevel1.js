@@ -1,11 +1,11 @@
 // Adventure Game Custom Level
 // Exported from GameBuilder on 2026-03-05T20:23:59.225Z
 // How to use this file:
-// 1) Save as assets/js/adventureGame/GameLevelMazelvl1.js in your repo.
+// 1) Save as assets/js/adventureGame/IshanLevel1.js in your repo.
 // 2) Reference it in your runner or level selector. Examples:
 //    import GameLevelPlanets from '/assets/js/GameEnginev1/GameLevelPlanets.js';
-//    import GameLevelMazelvl1 from '/assets/js/adventureGame/GameLevelMazelvl1.js';
-//    export const gameLevelClasses = [GameLevelPlanets, GameLevelMazelvl1];
+//    import IshanLevel1 from '/assets/js/adventureGame/IshanLevel1.js';
+//    export const gameLevelClasses = [GameLevelPlanets, IshanLevel1];
 //    // or pass it directly to your GameControl as the only level.
 // 3) Ensure images exist and paths resolve via 'path' provided by the engine.
 // 4) You can add more objects to this.classes inside the constructor.
@@ -15,7 +15,7 @@ import Player from '/assets/js/GameEnginev1/essentials/Player.js';
 import Npc from '/assets/js/GameEnginev1/essentials/Npc.js';
 import Barrier from '/assets/js/GameEnginev1/essentials/Barrier.js';
 
-class GameLevelMazelvl1 {
+class IshanLevel1 {
     constructor(gameEnv) {
         const path = gameEnv.path;
         const width = gameEnv.innerWidth;
@@ -130,4 +130,4 @@ this.classes = [      { class: GameEnvBackground, data: bgData },
     }
 }
 
-export default GameLevelMazelvl1;
+export default IshanLevel1;
