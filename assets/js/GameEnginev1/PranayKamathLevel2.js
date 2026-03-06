@@ -53,20 +53,17 @@ class GameLevelCustom {
     
     const enemyNpcConfig = {
       id: "npc-enemy",
-      src: `${path}/images/npcs/enemy.png`, // <- change to your file
+      src: `${path}/images/npcs/enemy.png`, 
       x: Math.floor(width * 0.70),
       y: Math.floor(height * 0.75),
       scale: 1.0,
       zIndex: 5,
-      // Example movement idea (patrol). Your engine may use different fields.
       behavior: "patrol",
       patrolMinX: Math.floor(width * 0.60),
       patrolMaxX: Math.floor(width * 0.85),
       patrolSpeed: 2
     };
 
-    // Barriers / Walls (collision rectangles)
-    // Use these for platforms, boundaries, finish line triggers, etc.
     const floorBarrierConfig = {
       id: "floor",
       x: 0,
@@ -78,17 +75,17 @@ class GameLevelCustom {
       zIndex: 2
     };
 
-    // Finish line barrier (when player collides -> transition to next level)
+   
     const finishBarrierConfig = {
       id: "finish",
       x: width - 80,
       y: Math.floor(height * 0.70),
       width: 40,
       height: Math.floor(height * 0.18),
-      visible: true, // often useful to see finish line during dev
+      visible: true, 
       hitbox: { widthPercentage: 0.0, heightPercentage: 0.0 },
       zIndex: 6,
-      // Optional: tag it so your collision logic knows it's special
+      
       isFinish: true
     };
 
