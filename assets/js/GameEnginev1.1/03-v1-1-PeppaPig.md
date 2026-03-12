@@ -10,8 +10,8 @@ permalink: /gamify/peppaPigv1-1
 </div>
 
 <script type="module">
-    // Adnventure Game assets locations
-    import FinTech from "{{site.baseurl}}/assets/js/GameEnginev1.1/FinTech.js";
+    // Adventure Game assets locations
+    import Game from "{{site.baseurl}}/assets/js/GameEnginev1.1/essentials/Game.js";
     import PeppaLevel1 from "{{site.baseurl}}/assets/js/GameEnginev1.1/PeppaLevel1.js";
     import PeppaLevel2 from "{{site.baseurl}}/assets/js/GameEnginev1.1/PeppaLevel2.js";
     import PeppaLevel3 from "{{site.baseurl}}/assets/js/GameEnginev1.1/PeppaLevel3.js";
@@ -31,5 +31,5 @@ permalink: /gamify/peppaPigv1-1
 
     }
     // Launch Adventure Game
-    FinTech.main(environment);
+    Game.main(environment);
 </script>
