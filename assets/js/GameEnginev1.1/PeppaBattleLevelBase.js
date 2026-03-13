@@ -15,13 +15,19 @@ class PeppaBattleLevelBase {
         this.playerHealth = this.playerMaxHealth;
         this.playerDamageCooldownMs = config.playerDamageCooldownMs ?? 650;
         this.attackCooldownMs = config.attackCooldownMs ?? 280;
-        this.attackRange = config.attackRange ?? 160;
+        this.laserSpeed = config.laserSpeed ?? 14;
         this.lastPlayerHitAt = 0;
         this.lastAttackAt = 0;
+        this.lastEnemyLaserAt = 0;
+        this.enemyLaserIntervalMs = config.enemyLaserIntervalMs ?? 1800;
         this.attackRequested = false;
         this.battleEnded = false;
         this.messageTimeout = null;
+        this.lasers = [];
 
+        // Floor barrier: characters stay in lower portion (ground), cannot float in air
+        this.floorY = height * 0.48;
+        this.ceilingY = 0;
         this.playerSpawn = { x: width * 0.12, y: height * 0.72 };
 
         const image_data_background = {
@@ -34,7 +40,7 @@ class PeppaBattleLevelBase {
             id: 'IshanJha',
             greeting: 'Ishan Jha enters the ring. Press SPACE to attack.',
             src: `${path}/images/gamify/IshanJha.png`,
-            SCALE_FACTOR: 6,
+            SCALE_FACTOR: 4,
             STEP_FACTOR: 1100,
             ANIMATION_RATE: 12,
             INIT_POSITION: this.playerSpawn,
@@ -46,7 +52,7 @@ class PeppaBattleLevelBase {
             id: config.enemyName,
             greeting: config.enemyGreeting,
             src: `${path}/images/gamify/${config.enemyImage}`,
-            SCALE_FACTOR: config.enemyScale ?? 6,
+            SCALE_FACTOR: config.enemyScale ?? 4,
             ANIMATION_RATE: 18,
             INIT_POSITION: { x: width * 0.72, y: height * 0.66 },
             health: config.enemyHealth,
@@ -65,8 +71,10 @@ class PeppaBattleLevelBase {
 
     initialize() {
         this.createHud();
-        this.updateHud('Fight! Use WASD to move and SPACE to attack.');
+        // Show enemy greeting prominently at level start
+        this.updateHud(`${this.config.enemyName}: "${this.config.enemyGreeting}" — Fight! Use WASD to move and SPACE to fire lasers.`);
         document.addEventListener('keydown', this.boundKeyDown);
+        this.createLaserLayer();
     }
 
     destroy() {
@@ -76,6 +84,134 @@ class PeppaBattleLevelBase {
         }
         if (this.hud) {
             this.hud.remove();
+        }
+        if (this.laserLayer && this.laserLayer.parentNode) {
+            this.laserLayer.remove();
+        }
+    }
+
+    createLaserLayer() {
+        this.laserLayer = document.createElement('canvas');
+        this.laserLayer.id = `peppa-laser-layer-${this.config.levelId}`;
+        this.laserLayer.style.cssText = 'position:absolute; left:0; top:0; pointer-events:none; z-index:15;';
+        const container = this.gameEnv.gameContainer || this.gameEnv.container || document.getElementById('gameContainer') || document.body;
+        container.style.position = 'relative';
+        container.appendChild(this.laserLayer);
+        this.laserLayer.width = this.gameEnv.innerWidth;
+        this.laserLayer.height = this.gameEnv.innerHeight;
+        this.laserLayer.style.width = `${this.gameEnv.innerWidth}px`;
+        this.laserLayer.style.height = `${this.gameEnv.innerHeight}px`;
+    }
+
+    spawnLaser(fromX, fromY, targetX, targetY, isPlayerLaser) {
+        const dx = targetX - fromX;
+        const dy = targetY - fromY;
+        const len = Math.hypot(dx, dy) || 1;
+        this.lasers.push({
+            x: fromX,
+            y: fromY,
+            vx: (dx / len) * this.laserSpeed,
+            vy: (dy / len) * this.laserSpeed,
+            isPlayerLaser,
+            life: 60,
+            maxLife: 60
+        });
+    }
+
+    updateLasers() {
+        const ctx = this.laserLayer?.getContext('2d');
+        if (!ctx) return;
+
+        this.laserLayer.width = this.gameEnv.innerWidth;
+        this.laserLayer.height = this.gameEnv.innerHeight;
+        this.laserLayer.style.width = `${this.gameEnv.innerWidth}px`;
+        this.laserLayer.style.height = `${this.gameEnv.innerHeight}px`;
+
+        const player = this.getPlayer();
+        const boss = this.getBoss();
+
+        for (let i = this.lasers.length - 1; i >= 0; i--) {
+            const L = this.lasers[i];
+            L.x += L.vx;
+            L.y += L.vy;
+            L.life -= 1;
+
+            if (L.life <= 0) {
+                this.lasers.splice(i, 1);
+                continue;
+            }
+
+            // Draw laser
+            const alpha = L.life / L.maxLife;
+            ctx.save();
+            ctx.translate(L.x, L.y);
+            ctx.rotate(Math.atan2(L.vy, L.vx));
+            const grad = ctx.createLinearGradient(-25, 0, 25, 0);
+            const color = L.isPlayerLaser ? 'rgba(0,255,255,0.9)' : 'rgba(255,50,50,0.9)';
+            grad.addColorStop(0, 'transparent');
+            grad.addColorStop(0.3, color);
+            grad.addColorStop(0.7, color);
+            grad.addColorStop(1, 'transparent');
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = grad;
+            ctx.fillRect(-25, -3, 50, 6);
+            ctx.shadowColor = L.isPlayerLaser ? 'cyan' : 'red';
+            ctx.shadowBlur = 8;
+            ctx.fillRect(-25, -2, 50, 4);
+            ctx.restore();
+
+            // Collision
+            const hitW = 20;
+            const hitH = 20;
+            const hitLeft = L.x - hitW / 2;
+            const hitTop = L.y - hitH / 2;
+
+            if (L.isPlayerLaser && boss && !boss.isDefeated) {
+                if (hitLeft < boss.position.x + boss.width && hitLeft + hitW > boss.position.x &&
+                    hitTop < boss.position.y + boss.height && hitTop + hitH > boss.position.y) {
+                    boss.takeDamage(1);
+                    this.updateHud(`Laser hit! ${this.config.enemyName} took damage.`);
+                    this.lasers.splice(i, 1);
+                }
+            } else if (!L.isPlayerLaser && player) {
+                if (hitLeft < player.position.x + player.width && hitLeft + hitW > player.position.x &&
+                    hitTop < player.position.y + player.height && hitTop + hitH > player.position.y) {
+                    if (Date.now() - this.lastPlayerHitAt >= this.playerDamageCooldownMs) {
+                        this.lastPlayerHitAt = Date.now();
+                        this.playerHealth = Math.max(0, this.playerHealth - 1);
+                        this.updateHud(`${this.config.enemyName}'s laser hit you!`);
+                    }
+                    this.lasers.splice(i, 1);
+                }
+            }
+        }
+    }
+
+    enforceFloorBarriers() {
+        const player = this.getPlayer();
+        const boss = this.getBoss();
+        const floorY = this.floorY;
+        const height = this.gameEnv.innerHeight;
+
+        if (player) {
+            if (player.position.y < floorY) {
+                player.position.y = floorY;
+                player.velocity.y = 0;
+            }
+            if (player.position.y + player.height > height) {
+                player.position.y = height - player.height;
+                player.velocity.y = 0;
+            }
+        }
+        if (boss) {
+            if (boss.position.y < floorY) {
+                boss.position.y = floorY;
+                boss.velocity.y = 0;
+            }
+            if (boss.position.y + boss.height > height) {
+                boss.position.y = height - boss.height;
+                boss.velocity.y = 0;
+            }
         }
     }
 
@@ -174,17 +310,28 @@ class PeppaBattleLevelBase {
 
         if (this.attackRequested) {
             this.attackRequested = false;
-            if (now - this.lastAttackAt >= this.attackCooldownMs) {
+            if (now - this.lastAttackAt >= this.attackCooldownMs && !boss.isDefeated) {
                 this.lastAttackAt = now;
-                const distance = this.centerDistance(player, boss);
-                if (distance <= this.attackRange && !boss.isDefeated) {
-                    boss.takeDamage(1);
-                    this.updateHud(`Hit! ${this.config.enemyName} took damage.`);
-                } else {
-                    this.updateHud('Miss! Move closer before attacking.');
-                }
+                const px = player.position.x + player.width / 2;
+                const py = player.position.y + player.height / 2;
+                const bx = boss.position.x + boss.width / 2;
+                const by = boss.position.y + boss.height / 2;
+                this.spawnLaser(px, py, bx, by, true);
             }
         }
+
+        // Enemy periodically fires lasers at player
+        if (!boss.isDefeated && now - this.lastEnemyLaserAt >= this.enemyLaserIntervalMs) {
+            this.lastEnemyLaserAt = now;
+            const bx = boss.position.x + boss.width / 2;
+            const by = boss.position.y + boss.height / 2;
+            const px = player.position.x + player.width / 2;
+            const py = player.position.y + player.height / 2;
+            this.spawnLaser(bx, by, px, py, false);
+        }
+
+        this.updateLasers();
+        this.enforceFloorBarriers();
 
         if (!boss.isDefeated && this.areColliding(player, boss) && (now - this.lastPlayerHitAt >= this.playerDamageCooldownMs)) {
             this.lastPlayerHitAt = now;

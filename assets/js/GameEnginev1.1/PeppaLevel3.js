@@ -11,7 +11,7 @@ class PeppaLevel3 extends PeppaBattleLevelBase {
 			enemyImage: 'daddypig.png',
 			enemyHealth: 8,
 			enemySpeed: 1.2,
-			enemyScale: 5,
+			enemyScale: 4,
 			playerHealth: 5
 		});
 	}
